@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import joblib, json
+import os
 
 st.set_page_config(
     page_title="Rekomendasi Tanaman",
@@ -11,7 +12,9 @@ st.set_page_config(
 
 @st.cache_resource
 def load_artifacts():
-    model   = joblib.load("model/best_model.pkl")
+    
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    model = joblib.load(os.path.join(BASE_DIR, "model", "best_model.pkl"))
     scaler  = joblib.load("model/scaler.pkl")
     imputer = joblib.load("model/imputer.pkl")
     with open("model/metadata.json") as f:
