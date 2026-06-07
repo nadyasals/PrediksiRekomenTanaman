@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "model")
+MODEL_DIR = BASE_DIR
 
 @st.cache_resource
 def load_artifacts():
