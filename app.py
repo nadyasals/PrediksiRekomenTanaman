@@ -12,18 +12,16 @@ st.set_page_config(
 )
 
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = BASE_DIR
 
 @st.cache_resource
 def load_artifacts():
-    model   = joblib.load(os.path.join(MODEL_DIR, "best_model.pkl"))
-    scaler  = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
-    imputer = joblib.load(os.path.join(MODEL_DIR, "imputer.pkl"))
-    with open(os.path.join(MODEL_DIR, "metadata.json")) as f:
+    model  = joblib.load(os.path.join(BASE_DIR, "best_model.pkl"))
+    scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+    with open(os.path.join(BASE_DIR, "metadata.json")) as f:
         meta = json.load(f)
-    return model, scaler, imputer, meta
+    return model, scaler, meta
 
-model, scaler, imputer, meta = load_artifacts()
+model, scaler, meta = load_artifacts()
 
 st.title("🌾 Prediksi Rekomendasi Tanaman")
 st.markdown("Sistem rekomendasi tanaman berbasis **Machine Learning** berdasarkan kondisi kesuburan tanah dan iklim.")
@@ -56,8 +54,7 @@ with tab1:
     st.divider()
     if st.button("Prediksi Tanaman", type="primary", use_container_width=True):
         input_df    = pd.DataFrame([input_vals])
-        input_imp   = imputer.transform(input_df)
-        input_final = scaler.transform(input_imp) if meta["best_model_scaled"] else input_imp
+        input_final = scaler.transform(input_df) if meta["best_model_scaled"] else input_df.values
         pred        = model.predict(input_final)[0]
         proba       = model.predict_proba(input_final)[0]
         class_names = meta["class_names"]
@@ -66,7 +63,6 @@ with tab1:
 
         st.success("Tanaman yang direkomendasikan: **" + pred_label.upper() + "**")
         st.info("Confidence: " + str(round(confidence, 1)) + "%")
-
         st.markdown("**Probabilitas Top 5 Tanaman:**")
         top5_idx   = np.argsort(proba)[::-1][:5]
         top5_crops = [class_names[i] for i in top5_idx]
@@ -84,12 +80,11 @@ with tab2:
         st.write("Data:", df_up.shape[0], "baris x", df_up.shape[1], "kolom")
         st.dataframe(df_up.head())
         if st.button("Prediksi Semua Baris", type="primary"):
-            feat_cols   = [c for c in meta["feature_columns"] if c in df_up.columns]
-            X_up        = df_up[feat_cols]
-            X_imp       = imputer.transform(X_up)
-            X_final     = scaler.transform(X_imp) if meta["best_model_scaled"] else X_imp
-            preds       = model.predict(X_final)
-            probas      = model.predict_proba(X_final)
+            feat_cols = [c for c in meta["feature_columns"] if c in df_up.columns]
+            X_up      = df_up[feat_cols]
+            X_final   = scaler.transform(X_up) if meta["best_model_scaled"] else X_up.values
+            preds     = model.predict(X_final)
+            probas    = model.predict_proba(X_final)
             class_names = meta["class_names"]
             df_up["Rekomendasi"] = [class_names[int(p)] for p in preds]
             df_up["Confidence"]  = [str(round(float(np.max(pr)) * 100, 1)) + "%" for pr in probas]
@@ -101,3 +96,4 @@ with tab2:
                 file_name="hasil_rekomendasi.csv",
                 mime="text/csv"
             )
+
