@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import joblib, json
-import os
+import joblib, json, os
 
 st.set_page_config(
     page_title="Rekomendasi Tanaman",
@@ -10,14 +9,16 @@ st.set_page_config(
     layout="wide"
 )
 
+# Path absolut agar tidak error di Streamlit Cloud
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "model")
+
 @st.cache_resource
 def load_artifacts():
-    
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    model = joblib.load(os.path.join(BASE_DIR, "model", "best_model.pkl"))
-    scaler  = joblib.load("model/scaler.pkl")
-    imputer = joblib.load("model/imputer.pkl")
-    with open("model/metadata.json") as f:
+    model   = joblib.load(os.path.join(MODEL_DIR, "best_model.pkl"))
+    scaler  = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
+    imputer = joblib.load(os.path.join(MODEL_DIR, "imputer.pkl"))
+    with open(os.path.join(MODEL_DIR, "metadata.json")) as f:
         meta = json.load(f)
     return model, scaler, imputer, meta
 
@@ -67,21 +68,4 @@ with tab1:
 
 with tab2:
     st.subheader("Upload File CSV")
-    st.info("Kolom yang dibutuhkan: " + str(meta["feature_columns"]))
-    uploaded = st.file_uploader("Upload CSV", type=["csv"])
-    if uploaded:
-        df_up = pd.read_csv(uploaded)
-        st.dataframe(df_up.head())
-        if st.button("Prediksi Semua Baris", type="primary"):
-            feat_cols   = [c for c in meta["feature_columns"] if c in df_up.columns]
-            X_up        = df_up[feat_cols]
-            X_imp       = imputer.transform(X_up)
-            X_final     = scaler.transform(X_imp) if meta["best_model_scaled"] else X_imp
-            preds       = model.predict(X_final)
-            probas      = model.predict_proba(X_final)
-            class_names = meta["class_names"]
-            df_up["Rekomendasi"]  = [class_names[int(p)] for p in preds]
-            df_up["Confidence"]  = [str(round(float(np.max(pr))*100,1))+"%" for pr in probas]
-            st.success("Prediksi selesai untuk " + str(len(df_up)) + " baris")
-            st.dataframe(df_up)
-            st.download_button("Download Hasil", df_up.to_csv(index=False), "hasil_rekomendasi.csv", "text/csv")
+    st.info("Kolom yang dibutuhkan: " + str(meta["
