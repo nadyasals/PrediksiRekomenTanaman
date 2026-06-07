@@ -1,0 +1,53 @@
+{
+  "best_model_name": "Logistic Regression",
+  "target_column": "label",
+  "feature_columns": [
+    "N",
+    "P",
+    "K",
+    "ph",
+    "EC",
+    "S",
+    "Cu",
+    "Fe",
+    "Mn",
+    "Zn",
+    "B"
+  ],
+  "n_classes": 6,
+  "class_names": [
+    "grapes",
+    "mango",
+    "mulberry",
+    "pomegranate",
+    "potato",
+    "ragi"
+  ],
+  "test_accuracy": 0.9597,
+  "f1_macro": 0.9603,
+  "cv_accuracy": 0.9658,
+  "cv_std": 0.0295,
+  "use_smote": false,
+  "best_model_scaled": true,
+  "all_results": {
+    "Logistic Regression": {
+      "test_acc": 0.9597,
+      "f1_macro": 0.9603,
+      "cv_mean": 0.9658,
+      "cv_std": 0.0295
+    },
+    "Random Forest": {
+      "test_acc": 0.9597,
+      "f1_macro": 0.9603,
+      "cv_mean": 0.9698,
+      "cv_std": 0.022
+    },
+    "XGBoost": {
+      "test_acc": 0.9597,
+      "f1_macro": 0.9603,
+      "cv_mean": 0.9618,
+      "cv_std": 0.0183
+    }
+  },
+  "use_imputer": false
+}
