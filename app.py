@@ -1,0 +1,84 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+import joblib, json
+
+st.set_page_config(
+    page_title="Rekomendasi Tanaman",
+    page_icon="🌾",
+    layout="wide"
+)
+
+@st.cache_resource
+def load_artifacts():
+    model   = joblib.load("model/best_model.pkl")
+    scaler  = joblib.load("model/scaler.pkl")
+    imputer = joblib.load("model/imputer.pkl")
+    with open("model/metadata.json") as f:
+        meta = json.load(f)
+    return model, scaler, imputer, meta
+
+model, scaler, imputer, meta = load_artifacts()
+
+st.title("🌾 Prediksi Rekomendasi Tanaman")
+st.markdown("Sistem rekomendasi tanaman berbasis **Machine Learning** berdasarkan kondisi kesuburan tanah dan iklim.")
+st.divider()
+
+with st.sidebar:
+    st.header("Informasi Model")
+    st.metric("Model Terbaik",  meta["best_model_name"])
+    st.metric("Test Accuracy",  str(round(meta["test_accuracy"]*100, 2)) + "%")
+    st.metric("F1-Score Macro", str(round(meta["f1_macro"]*100, 2)) + "%")
+    st.metric("Jumlah Kelas",   str(meta["n_classes"]) + " tanaman")
+    st.divider()
+    st.caption("Dataset: Crop Recommender - Kaggle")
+
+tab1, tab2 = st.tabs(["Prediksi Manual", "Prediksi Upload CSV"])
+
+with tab1:
+    st.subheader("Masukkan Parameter Tanah & Iklim")
+    feature_cols = meta["feature_columns"]
+    cols = st.columns(3)
+    input_vals = {}
+    for i, feat in enumerate(feature_cols):
+        with cols[i % 3]:
+            input_vals[feat] = st.number_input(feat, value=0.0, format="%.4f", key=feat)
+    st.divider()
+    if st.button("Prediksi Tanaman", type="primary", use_container_width=True):
+        input_df    = pd.DataFrame([input_vals])
+        input_imp   = imputer.transform(input_df)
+        input_final = scaler.transform(input_imp) if meta["best_model_scaled"] else input_imp
+        pred        = model.predict(input_final)[0]
+        proba       = model.predict_proba(input_final)[0]
+        class_names = meta["class_names"]
+        pred_label  = class_names[int(pred)]
+        confidence  = float(np.max(proba)) * 100
+        st.success("Tanaman yang direkomendasikan: **" + pred_label.upper() + "**")
+        st.info("Confidence: " + str(round(confidence, 1)) + "%")
+        st.markdown("**Probabilitas Top 5 Tanaman:**")
+        top5_idx   = np.argsort(proba)[::-1][:5]
+        top5_crops = [class_names[i] for i in top5_idx]
+        top5_proba = [proba[i] for i in top5_idx]
+        prob_df    = pd.DataFrame({"Tanaman": top5_crops, "Probabilitas": top5_proba})
+        st.bar_chart(prob_df.set_index("Tanaman"))
+
+with tab2:
+    st.subheader("Upload File CSV")
+    st.info("Kolom yang dibutuhkan: " + str(meta["feature_columns"]))
+    uploaded = st.file_uploader("Upload CSV", type=["csv"])
+    if uploaded:
+        df_up = pd.read_csv(uploaded)
+        st.dataframe(df_up.head())
+        if st.button("Prediksi Semua Baris", type="primary"):
+            feat_cols   = [c for c in meta["feature_columns"] if c in df_up.columns]
+            X_up        = df_up[feat_cols]
+            X_imp       = imputer.transform(X_up)
+            X_final     = scaler.transform(X_imp) if meta["best_model_scaled"] else X_imp
+            preds       = model.predict(X_final)
+            probas      = model.predict_proba(X_final)
+            class_names = meta["class_names"]
+            df_up["Rekomendasi"]  = [class_names[int(p)] for p in preds]
+            df_up["Confidence"]  = [str(round(float(np.max(pr))*100,1))+"%" for pr in probas]
+            st.success("Prediksi selesai untuk " + str(len(df_up)) + " baris")
+            st.dataframe(df_up)
+            st.download_button("Download Hasil", df_up.to_csv(index=False), "hasil_rekomendasi.csv", "text/csv")
